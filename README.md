@@ -12,7 +12,7 @@ A full-stack web app where users set **monthly spending targets per category**, 
 ## Live URL
 
 - Web app: **`<TODO: paste Vercel deployment URL>`**
-- Backend API: **`<TODO: paste workers.dev URL>`**
+- Backend API: **`https://budget-tracker-backend.dev-ayush.workers.dev`**
 - Demo login: `demo@example.com` / `demo1234` (created by `db:seed`, matches the assignment's sample data)
 
 ---
