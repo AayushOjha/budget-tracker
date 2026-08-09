@@ -1,0 +1,38 @@
+{
+  "name": "@tracker/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "5.22.0",
+    "@prisma/client": "^5.22.0",
+    "@tracker/utils": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "hono": "^4.6.0",
+    "jose": "^5.9.6",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260610.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.10",
+    "prisma": "^5.22.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

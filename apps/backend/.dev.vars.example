@@ -1,0 +1,5 @@
+# Cloudflare Worker environment variables — copy to .dev.vars for local dev.
+# Never commit .dev.vars (it is gitignored).
+DATABASE_URL=postgresql://postgres.XXXX:password@aws-0-region.pooler.supabase.com:6543/postgres
+DIRECT_URL=postgresql://postgres.XXXX:password@aws-0-region.pooler.supabase.com:5432/postgres
+JWT_SECRET=dev-secret-change-me
