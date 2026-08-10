@@ -4,6 +4,7 @@ import { getLockedMonths } from '../lib/months';
 import { getPrisma } from '../lib/prisma';
 import { HonoEnv } from '../types/hono';
 import {
+  CsvImportResult,
   actualCreateSchema,
   actualDeleteSchema,
   actualUpdateSchema,
@@ -12,11 +13,6 @@ import {
   Month,
 } from '@tracker/utils';
 
-interface CsvEntry {
-  line: number;
-  raw: string;
-  error: string;
-}
 
 export const actualRouter = new Hono<HonoEnv>();
 
@@ -176,7 +172,7 @@ actualRouter.post('/import', async (c) => {
   }
 
   const imports: { categoryId: string; month: Month; amount: number }[] = [];
-  const errors: CsvEntry[] = [];
+  const errors: CsvImportResult['errors'] = [];
 
   rows.forEach((cells, index) => {
     const line = index + 2; // 1-based, offset by header

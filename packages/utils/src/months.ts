@@ -51,6 +51,15 @@ export function formatMonth(month: Month): string {
   return `${names[Number(m) - 1]} ${y}`;
 }
 
+
+/** Shift a month by `delta` months (positive = forward, negative = backward). */
+export function shiftMonth(month: Month, delta: number): Month {
+  const [y, m] = month.split('-').map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12 + 1; // handles negative mod correctly
+  return `${ny}-${String(nm).padStart(2, '0')}` as Month;
+}
 export function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,

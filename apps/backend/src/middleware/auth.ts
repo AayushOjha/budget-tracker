@@ -11,9 +11,7 @@ const PUBLIC_PATHS = ['/ping', '/api/auth/signup', '/api/auth/login'];
 export const requireAuth: MiddlewareHandler<HonoEnv> = async (c, next) => {
   const path = c.req.path;
 
-  const isPublic =
-    PUBLIC_PATHS.includes(path) ||
-    (path === '/api/auth' && c.req.method === 'GET');
+  const isPublic = PUBLIC_PATHS.includes(path);
 
   if (!isPublic) {
     const header = c.req.header('Authorization');
