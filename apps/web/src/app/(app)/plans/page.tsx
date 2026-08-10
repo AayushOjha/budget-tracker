@@ -27,15 +27,19 @@ export default function PlansPage() {
   };
 
   const save = useMutation({
-    mutationFn: () => {
-      const entries = [...(categories.data?.categories ?? [])].map((c) => {
-        const amount = Number(drafts.get(c.id));
-        return { categoryId: c.id, amount: Number.isFinite(amount) ? amount : null };
-      });
+    // When categoryId is provided, save only that row (per-row Save button).
+    // When omitted, save all categories that have a draft value (Save all targets).
+    mutationFn: (categoryId?: string) => {
+      const cats = categoryId
+        ? (categories.data?.categories ?? []).filter((c) => c.id === categoryId)
+        : (categories.data?.categories ?? []);
+
       const operations = [];
-      for (const e of entries) {
-        if (e.amount !== null && e.amount >= 0) {
-          operations.push(api.savePlan(e.categoryId, month, e.amount));
+      for (const c of cats) {
+        if (!drafts.has(c.id)) continue; // skip untouched rows
+        const amount = Number(drafts.get(c.id));
+        if (Number.isFinite(amount) && amount >= 0) {
+          operations.push(api.savePlan(c.id, month, amount));
         }
       }
       return Promise.all(operations);
@@ -99,7 +103,7 @@ export default function PlansPage() {
                     <button
                       className="btn btn-sm btn-primary"
                       disabled={isLocked || !drafts.has(category.id)}
-                      onClick={() => save.mutate()}
+                      onClick={() => save.mutate(category.id)}
                     >
                       Save
                     </button>
@@ -114,7 +118,7 @@ export default function PlansPage() {
         </table>
 
         <div style={{ marginTop: 12 }}>
-          <button className="btn btn-primary" disabled={isLocked || save.isPending} onClick={() => save.mutate()}>
+          <button className="btn btn-primary" disabled={isLocked || save.isPending} onClick={() => save.mutate(undefined)}>
             {save.isPending ? "Saving…" : "Save all targets"}
           </button>
         </div>
