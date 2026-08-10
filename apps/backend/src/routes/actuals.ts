@@ -93,7 +93,7 @@ actualRouter.patch('/:id', async (c) => {
 
   const targetMonth = (parsed.data.month ?? existing.month) as Month;
   try {
-    assertNotLocked(await getLockedMonths(prisma, userId), [targetMonth]);
+    assertNotLocked(await getLockedMonths(prisma, userId), [targetMonth, existing.month]);
   } catch (error) {
     if (error instanceof LockedPeriodError) return c.json({ error: error.message }, 423);
     throw error;
