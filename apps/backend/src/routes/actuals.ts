@@ -129,21 +129,19 @@ actualRouter.delete('/:id', async (c) => {
 });
 
 // ── CSV import ───────────────────────────────────────────────────────────────
-// Format: header line `month,category,amount` followed by one entry per line.
+// Format: a header row containing at least `month`, `category`, and `amount`
+// columns (any order; extra columns silently ignored), followed by data rows.
 // Category names must match an existing category (case-insensitive);
-// month must be YYYY-MM. Locked months are rejected per line.
+// month must be YYYY-MM. Locked months are rejected.
+// All-or-nothing: any row error aborts the entire import — nothing is written.
 
 function parseCsv(text: string): string[][] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  const rows: string[][] = [];
-  for (const line of lines) {
-    rows.push(
-      line
-        .split(',')
-        .map((cell) => cell.trim().replace(/^"(.*)"$/, '$1'))
-    );
-  }
-  return rows;
+  // Strip UTF-8 BOM if present (common in Windows-exported CSV files)
+  const clean = text.replace(/^\uFEFF/, '');
+  const lines = clean.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  return lines.map((line) =>
+    line.split(',').map((cell) => cell.trim().replace(/^"(.*)"$/, '$1'))
+  );
 }
 
 function parseAmount(raw: string): number | null {
@@ -165,37 +163,46 @@ actualRouter.post('/import', async (c) => {
   const categoryByName = new Map(categories.map((ct) => [ct.name.toLowerCase(), ct]));
 
   const rows = parseCsv(csv);
-  const header = rows.shift();
-  const hasHeader = header && header[0]?.toLowerCase().trim() === 'month';
-  if (hasHeader && (rows.length === 0 || header.length < 2)) {
-    return c.json({ error: 'CSV must start with a header: month,category,amount' }, 400);
+
+  // ── Header validation ────────────────────────────────────────────────────
+  // Header row is required. All three columns must be present; order is free.
+  const REQUIRED_COLS = ['month', 'category', 'amount'] as const;
+  const headerRow = rows.shift();
+  if (!headerRow) return c.json({ error: 'CSV is empty or has no header row' }, 400);
+
+  const headerLower = headerRow.map((h) => h.toLowerCase());
+  const missing = REQUIRED_COLS.filter((col) => !headerLower.includes(col));
+  if (missing.length > 0) {
+    return c.json({ error: `CSV header is missing required columns: ${missing.join(', ')}` }, 400);
   }
 
+  const colMonth    = headerLower.indexOf('month');
+  const colCategory = headerLower.indexOf('category');
+  const colAmount   = headerLower.indexOf('amount');
+
+  // ── Row validation ───────────────────────────────────────────────────────
+  // Collect ALL errors before touching the DB — all-or-nothing semantics.
   const imports: { categoryId: string; month: Month; amount: number }[] = [];
   const errors: CsvImportResult['errors'] = [];
 
   rows.forEach((cells, index) => {
-    const line = index + 2; // 1-based, offset by header
+    const line = index + 2; // 1-based, offset by the header row
     const raw = cells.join(',');
-    if (cells.length < 3) {
-      errors.push({ line, raw, error: 'Expected 3 columns: month,category,amount' });
-      return;
-    }
 
-    const amount = parseAmount(cells[2]);
+    const amount = parseAmount(cells[colAmount] ?? '');
     const checked = csvRowSchema.safeParse({
-      month: cells[0],
-      category: cells[1],
+      month:    cells[colMonth],
+      category: cells[colCategory],
       amount,
     });
 
     if (!checked.success) {
-      const first = checked.error.issues[0];
-      errors.push({ line, raw, error: first?.message ?? 'Invalid row' });
+      errors.push({ line, raw, error: checked.error.issues[0]?.message ?? 'Invalid row' });
       return;
     }
 
     const { month, category } = checked.data;
+
     if (locked.has(month)) {
       errors.push({ line, raw, error: `Month ${month} is locked` });
       return;
@@ -210,13 +217,19 @@ actualRouter.post('/import', async (c) => {
     imports.push({ categoryId: categoryRow.id, month: month as Month, amount: checked.data.amount });
   });
 
-  let imported = 0;
-  if (imports.length > 0) {
-    const created = await prisma.actual.createMany({
-      data: imports.map((i) => ({ userId, ...i })),
-    });
-    imported = created.count;
+  // Any error → reject the whole file; nothing is written.
+  if (errors.length > 0) {
+    return c.json({ imported: 0, skipped: errors.length, errors }, 422);
   }
 
-  return c.json({ imported, skipped: errors.length, errors });
+  if (imports.length === 0) {
+    return c.json({ imported: 0, skipped: 0, errors: [] });
+  }
+
+  // All rows valid — insert atomically in a single transaction.
+  const created = await prisma.$transaction((tx) =>
+    tx.actual.createMany({ data: imports.map((i) => ({ userId, ...i })) })
+  );
+
+  return c.json({ imported: created.count, skipped: 0, errors: [] });
 });

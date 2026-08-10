@@ -115,8 +115,9 @@ export default function ActualsPage() {
       <div className="card">
         <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>CSV import</h2>
         <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
-          Format: <code>month,category,amount</code> — one entry per line. Category must exist; month must be YYYY-MM.
-          Locked months are skipped with an error.
+          A header row is required with columns <code>month</code>, <code>category</code>, <code>amount</code> (any
+          order; extra columns ignored). Category must exist; month must be YYYY-MM. Locked months are rejected.{" "}
+          <strong>All rows must be valid</strong> — any error aborts the entire import.
         </p>
         <textarea
           rows={5}
